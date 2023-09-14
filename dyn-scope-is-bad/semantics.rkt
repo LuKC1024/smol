@@ -2,12 +2,10 @@
 
 (require [for-syntax syntax/parse])
 
-(require smol/hof/semantics)
+(require smol/lang/semantics)
 
-(provide [except-out [all-from-out smol/hof/semantics]
-                     ;defvar
-                     ;deffun
-                     lambda λ
+(provide [except-out [all-from-out smol/lang/semantics]
+                     lambda
                      letrec
                      let
                      let*
@@ -15,8 +13,7 @@
                      #%top
                      #%app])
 (provide defvar deffun)
-(provide [rename-out (dyn-λ λ)
-                     (dyn-λ lambda)
+(provide [rename-out (dyn-λ lambda)
                      (dyn-let let)
                      (dyn-let let*)
                      (dyn-let letrec)

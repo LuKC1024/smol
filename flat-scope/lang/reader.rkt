@@ -1,2 +1,2 @@
 #lang s-exp syntax/module-reader
-smol/state/semantics
+smol/flat-scope/semantics
