@@ -91,3 +91,14 @@
     [(_ fun:expr arg:expr ...)
      #'(parameterize ([dvs (hash-copy (dvs))])
          (#%app fun arg ...))]))
+
+(module test racket/base
+  (require smol/tests)
+  (check-term "smol/dyn-scope" (+ ((lambda (x) x) 2) x) ERROR)
+  (check-program "smol/dyn-scope"
+    '((deffun (f) x)
+      (deffun (g)
+        (defvar x 2)
+        (f))
+      (g))
+    '(2)))

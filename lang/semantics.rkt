@@ -11,7 +11,6 @@
   if
   cond
   begin
-  error
   + - * /
   < <= > >=
   #%module-begin
@@ -20,6 +19,11 @@
   #%top
   #%app
   (all-defined-out))
+
+(define (error msg)
+  (display "ERROR: ")
+  (displayln msg)
+  (exit))
 
 (define ++ string-append)
 

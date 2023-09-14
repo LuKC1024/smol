@@ -1,5 +1,10 @@
 #lang racket
 
+#|
+This language is like the standard semantics except that
+all bindings at things to the one, global environment.
+|#
+
 (require [for-syntax syntax/parse])
 
 (require smol/lang/semantics)
@@ -10,23 +15,21 @@
                      let
                      let*
                      set!
-                     #%top
-                     #%app])
+                     #%top])
 (provide defvar deffun)
-(provide [rename-out (dyn-λ lambda)
+(provide [rename-out (dyn-lambda lambda)
                      (dyn-let let)
                      (dyn-let let*)
                      (dyn-let letrec)
-                     (dyn-app #%app)
                      (dyn-set! set!)])
 
-(define the-dvs (make-hasheq))
+(define the-env (make-hasheq))
 
 (define (store name v)
-  (hash-set! the-dvs name (box v)))
+  (hash-set! the-env name (box v)))
 
 (define (internal-fetch name)
-  (hash-ref the-dvs name
+  (hash-ref the-env name
             (lambda ()
               (error name "undefined"))))
 
@@ -48,9 +51,9 @@
   (syntax-parse stx
     [(_ (fname:id arg:id ...) body:expr ...+)
      #'(defvar fname
-         (dyn-λ (arg ...) body ...))]))
+         (dyn-lambda (arg ...) body ...))]))
 
-(define-syntax (dyn-λ stx)
+(define-syntax (dyn-lambda stx)
   (syntax-parse stx
     [(_ (arg:id ...) body:expr ...+)
      (with-syntax ([(tmp-arg ...)
@@ -63,7 +66,7 @@
 (define-syntax (dyn-let stx)
   (syntax-parse stx
     ([_ ([var:id val:expr] ...) body:expr ...+]
-     #'(dyn-app (dyn-λ (var ...) body ...) val ...))))
+     #'(dyn-app (dyn-lambda (var ...) body ...) val ...))))
 
 (define-syntax dyn-let*
   (syntax-rules ()
@@ -86,7 +89,6 @@
      (with-syntax ([stx stx])
        #'(fetch 'var))]))
 
-(define-syntax (dyn-app stx)
-  (syntax-parse stx
-    [(_ fun:expr arg:expr ...)
-     #'(#%app fun arg ...)]))
+(module test racket/base
+  (require smol/tests)
+  (check-term "smol/flat-scope" (+ ((lambda (x) x) 2) x) 4))
