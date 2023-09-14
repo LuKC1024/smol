@@ -13,12 +13,12 @@
                      #%top
                      #%app])
 (provide defvar deffun)
-(provide [rename-out (dyn-λ lambda)
-                     (dyn-let let)
-                     (dyn-let let*)
-                     (dyn-let letrec)
-                     (dyn-app #%app)
-                     (dyn-set! set!)])
+(provide [rename-out (my-lambda lambda)
+                     (my-let let)
+                     (my-let* let*)
+                     (my-letrec letrec)
+                     (my-app #%app)
+                     (my-set! set!)])
 
 (define dvs (make-parameter (make-hasheq)))
 
@@ -48,9 +48,9 @@
   (syntax-parse stx
     [(_ (fname:id arg:id ...) body:expr ...+)
      #'(defvar fname
-         (dyn-λ (arg ...) body ...))]))
+         (my-lambda (arg ...) body ...))]))
 
-(define-syntax (dyn-λ stx)
+(define-syntax (my-lambda stx)
   (syntax-parse stx
     [(_ (arg:id ...) body:expr ...+)
      (with-syntax ([(tmp-arg ...)
@@ -60,20 +60,24 @@
            ...
            body ...))]))
 
-(define-syntax (dyn-let stx)
+(define-syntax (my-let stx)
   (syntax-parse stx
     ([_ ([var:id val:expr] ...) body:expr ...+]
-     #'(dyn-app (dyn-λ (var ...) body ...) val ...))))
-
-(define-syntax dyn-let*
+     #'(my-app (my-lambda (var ...) body ...) val ...))))
+(define-syntax my-let*
   (syntax-rules ()
-    [(dyn-let* () body ...)
-     (dyn-let () body ...)]
-    [(dyn-let* (fst rest ...) body ...)
-     (dyn-let (fst)
-       (dyn-let* (rest ...) body ...))]))
+    [(my-let* () body ...)
+     (my-let () body ...)]
+    [(my-let* (fst rest ...) body ...)
+     (my-let (fst)
+       (my-let* (rest ...) body ...))]))
+(define-syntax my-letrec
+  (syntax-rules ()
+    [(my-letrec ([x e] ...) . body)
+     (my-let ()
+       (defvar x e) ... . body)]))
 
-(define-syntax (dyn-set! stx)
+(define-syntax (my-set! stx)
   (syntax-parse stx
     ([_ var:id val:expr]
      #'(update 'var val))))
@@ -86,7 +90,7 @@
      (with-syntax ([stx stx])
        #'(fetch 'var))]))
 
-(define-syntax (dyn-app stx)
+(define-syntax (my-app stx)
   (syntax-parse stx
     [(_ fun:expr arg:expr ...)
      #'(parameterize ([dvs (hash-copy (dvs))])
