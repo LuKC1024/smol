@@ -7,7 +7,7 @@ This package provides the following `#lang`s:
 - `flat-scope`: there is only one, global, environment
 - `allow-redefine`: redefinition in the same scope is allowed and treated as mutation
 - `call-by-reference`: variables denote references to values rather than values themselves
-- `copy-structures`: structures (in our case, only vectors) are copied when bound to variables
+- `call-by-deep-copies`: structures (in our case, only vectors) are copied when bound to variables
 - `fun-copy-env`: function copies environment
 
 We need a fancier test system because we want to simulate evaluating whole programs such that
