@@ -12,7 +12,7 @@
                      set!
                      #%top])
 (provide defvar deffun)
-(provide [rename-out (my-λ lambda)
+(provide [rename-out (my-lambda lambda)
                      (my-let let)
                      (my-let let*)
                      (my-let letrec)
@@ -53,9 +53,9 @@
   (syntax-parse stx
     [(_ (fname:id arg:id ...) body:expr ...+)
      #'(defvar fname
-         (my-λ (arg ...) body ...))]))
+         (my-lambda (arg ...) body ...))]))
 
-(define-syntax (my-λ stx)
+(define-syntax (my-lambda stx)
   (syntax-parse stx
     [(_ (arg:id ...) body:expr ...+)
      (with-syntax ([(tmp-arg ...)
@@ -70,7 +70,7 @@
 (define-syntax (my-let stx)
   (syntax-parse stx
     ([_ ([var:id val:expr] ...) body:expr ...+]
-     #'(my-app (my-λ (var ...) body ...) val ...))))
+     #'(my-app (my-lambda (var ...) body ...) val ...))))
 
 (define-syntax my-let*
   (syntax-rules ()
