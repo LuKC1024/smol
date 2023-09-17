@@ -1,6 +1,7 @@
 #lang racket
 
 (require [for-syntax syntax/parse])
+(require [for-syntax racket/match])
 
 (require smol/lang/semantics)
 
@@ -9,69 +10,45 @@
                      letrec
                      let
                      let*
-                     set!
-                     #%top])
-(provide defvar deffun)
+                     #%module-begin])
 (provide [rename-out (my-lambda lambda)
                      (my-let let)
-                     (my-let let*)
-                     (my-let letrec)
-                     (my-set! set!)])
+                     (my-let* let*)
+                     (my-letrec letrec)
+                     (my-module-begin #%module-begin)])
 
-(define current-env (make-parameter (cons (make-hasheq) empty)))
-
-(define (handle-def x v)
-  (hash-set! (car (current-env)) x v))
-
-(define (handle-ref x)
-  (define (rec env)
-    (hash-ref (car env) x
-              (lambda ()
-                (if (cdr env)
-                    (rec (cdr env))
-                    (error x "undefined")))))
-  (rec (current-env)))
-
-(define (handle-set! x v)
-  (define (rec env)
-    (cond
-      [(hash-has-key? env x)
-       (hash-set! env x v)]
-      [(cdr env)
-       (rec (cdr env))]
-      [else
-       (error x "undefined")]))
-  (rec (current-env)))
-
-(define-syntax (defvar stx)
+(define-syntax (my-module-begin stx)
   (syntax-parse stx
-    [(_ var:id rhs:expr)
-     #'(let ([tmp rhs])
-         (handle-def 'var tmp))]))
-
-(define-syntax (deffun stx)
-  (syntax-parse stx
-    [(_ (fname:id arg:id ...) body:expr ...+)
-     #'(defvar fname
-         (my-lambda (arg ...) body ...))]))
+    [(_ term ...)
+     #`(#%module-begin #,@(redef->set! (list) (syntax->list #'(term ...))))]))
 
 (define-syntax (my-lambda stx)
   (syntax-parse stx
     [(_ (arg:id ...) body:expr ...+)
-     (with-syntax ([(tmp-arg ...)
-                    (generate-temporaries #'(arg ...))])
-       #'(let ([my-env (current-env)])
-           (lambda (tmp-arg ...)
-            (parameterize ([current-env my-env])
-              (handle-def 'arg tmp-arg)
-              ...
-              body ...))))]))
+     #`(lambda (arg ...) #,@(redef->set! (syntax->list #'(arg ...)) (syntax->list #'(body ...))))]))
+
+(begin-for-syntax
+  (define (redef->set! xs ts)
+    (match ts
+      [`() `()]
+      [`(,t . ,ts)
+       (syntax-parse t
+       	#:datum-literals (defvar deffun)
+        [(defvar y e)
+         (if (for/or ([x xs]) (free-identifier=? x #'y))
+             #`((set! y e) . #,(redef->set! (cons #'y xs) ts))
+             #`(#,t . #,(redef->set! (cons #'y xs) ts)))]
+        [(deffun (y arg ...) . body)
+         (if (for/or ([x xs]) (free-identifier=? x #'y))
+             #`(set! y (lambda (arg ...) . body))
+             #`(#,t . #,(redef->set! (cons #'y xs) ts)))]
+        [any
+         #`(any . #,(redef->set! xs ts))])])))
 
 (define-syntax (my-let stx)
   (syntax-parse stx
     ([_ ([var:id val:expr] ...) body:expr ...+]
-     #'(my-app (my-lambda (var ...) body ...) val ...))))
-
+     #'((my-lambda (var ...) body ...) val ...))))
 (define-syntax my-let*
   (syntax-rules ()
     [(my-let* () body ...)
@@ -79,18 +56,11 @@
     [(my-let* (fst rest ...) body ...)
      (my-let (fst)
        (my-let* (rest ...) body ...))]))
-
-(define-syntax (my-set! stx)
-  (syntax-parse stx
-    ([_ var:id val:expr]
-     #'(handle-set! 'var val))))
-
-(provide (rename-out [handle-id #%top]))
-
-(define-syntax (handle-id stx)
-  (syntax-case stx ()
-    [(_ . var)
-     #'(handle-ref 'var)]))
+(define-syntax my-letrec
+  (syntax-rules ()
+    [(my-letrec ([x e] ...) . body)
+     (my-let ()
+       (defvar x e) ... . body)]))
 
 (module test racket/base
   (require smol/tests)

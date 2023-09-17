@@ -11,17 +11,17 @@ all bindings at things to the one, global environment.
 
 (provide [except-out [all-from-out smol/lang/semantics]
                      lambda
-                     letrec
                      let
                      let*
+                     letrec
                      set!
                      #%top])
 (provide defvar deffun)
-(provide [rename-out (dyn-lambda lambda)
-                     (dyn-let let)
-                     (dyn-let let*)
-                     (dyn-let letrec)
-                     (dyn-set! set!)])
+(provide [rename-out (my-lambda lambda)
+                     (my-let let)
+                     (my-let* let*)
+                     (my-letrec letrec)
+                     (my-set! set!)])
 
 (define the-env (make-hasheq))
 
@@ -51,9 +51,9 @@ all bindings at things to the one, global environment.
   (syntax-parse stx
     [(_ (fname:id arg:id ...) body:expr ...+)
      #'(defvar fname
-         (dyn-lambda (arg ...) body ...))]))
+         (my-lambda (arg ...) body ...))]))
 
-(define-syntax (dyn-lambda stx)
+(define-syntax (my-lambda stx)
   (syntax-parse stx
     [(_ (arg:id ...) body:expr ...+)
      (with-syntax ([(tmp-arg ...)
@@ -63,20 +63,22 @@ all bindings at things to the one, global environment.
            ...
            body ...))]))
 
-(define-syntax (dyn-let stx)
-  (syntax-parse stx
-    ([_ ([var:id val:expr] ...) body:expr ...+]
-     #'(dyn-app (dyn-lambda (var ...) body ...) val ...))))
-
-(define-syntax dyn-let*
+(define-syntax-rule (my-app fun arg ...)
+  (fun arg ...))
+(define-syntax-rule (my-let ([x e] ...) . body)
+  (my-app (my-lambda (x ...) . body) e ...))
+(define-syntax my-let*
   (syntax-rules ()
-    [(dyn-let* () body ...)
-     (dyn-let () body ...)]
-    [(dyn-let* (fst rest ...) body ...)
-     (dyn-let (fst)
-       (dyn-let* (rest ...) body ...))]))
+    [(my-let* () body ...)
+     (my-let () body ...)]
+    [(my-let* (fst rest ...) body ...)
+     (my-let (fst)
+       (my-let* (rest ...) body ...))]))
+(define-syntax-rule (my-letrec ([x e] ...) . body)
+  (my-let ()
+    (defvar x e) ... . body))
 
-(define-syntax (dyn-set! stx)
+(define-syntax (my-set! stx)
   (syntax-parse stx
     ([_ var:id val:expr]
      #'(update 'var val))))
