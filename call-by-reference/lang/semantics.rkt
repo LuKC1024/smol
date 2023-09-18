@@ -9,27 +9,37 @@
                      let
                      let*
                      letrec
-                     set!])
+                     set!
+                     #%app])
 (provide defvar deffun)
 (provide [rename-out (my-lambda lambda)
                      (my-let let)
                      (my-let* let*)
                      (my-letrec letrec)
-                     (my-set! set!)])
+                     (my-set! set!)
+                     (my-app #%app)])
 
 (define current-env (make-parameter (cons (make-hasheq) empty)))
 (define-syntax-rule (my-app fun arg ...)
   (let ([f (as-val fun)])
     (if (ud-proc? f)
-        (f (as-box arg) ...)
+        (as-val (f (as-box arg) ...))
         (f (as-val arg) ...))))
+
+(define (as-val v)
+  (if (box? v) (unbox v) v))
+
+(define (ensure-box x)
+  (if (box? x)
+      (box (unbox x))
+      (box x)))
 
 (define-syntax (as-box stx)
   (syntax-parse stx
     [(_ x:id)
      #'x]
     [(_ e)
-     #'(box e)]))
+     #'(ensure-box e)]))
 
 (define-syntax (my-set! stx)
   (syntax-parse stx
@@ -57,9 +67,6 @@
 (struct ud-proc (base)
     #:property prop:procedure
                (struct-field-index base))
-
-(define (as-val v)
-  (if (box? v) (unbox v) v))
 
 (define-syntax (my-let stx)
   (syntax-parse stx
