@@ -16,3 +16,5 @@ we can error on, for example,
 (defvar x 2)
 (defvar x 3)
 ```
+
+We need `let*-style` definitions~
